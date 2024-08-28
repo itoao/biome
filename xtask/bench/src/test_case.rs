@@ -38,7 +38,7 @@ impl TestCase {
                     filename_path.extension().unwrap().to_str().unwrap()
                 };
 
-                format!("{file_stem}_{}.{file_extension}", calculate_hash(&file_url))
+                format!("{file_stem}.{}.{file_extension}", calculate_hash(&file_url))
             })?;
 
         let path = Path::new(
@@ -70,7 +70,19 @@ impl TestCase {
                             std::fs::remove_file(&path).ok();
                             return Err(err_to_string(err));
                         }
-                        std::fs::read_to_string(&path).map_err(err_to_string)
+                        let content = std::fs::read_to_string(&path).map_err(err_to_string)?;
+
+                        // Verify content hash
+                        let actual_hash = calculate_hash(&content);
+
+                        let expected_hash_str = filename.split('.').nth(1).unwrap();
+                        let expected_hash = expected_hash_str.parse::<u64>().map_err(err_to_string)?;
+
+                        if actual_hash != expected_hash {
+                            return Err(format!("Content hash mismatch for file: {}", filename));
+                        }
+
+                        Ok(content)
                     }
                     Err(e) => Err(err_to_string(e)),
                 }
